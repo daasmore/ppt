@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malware Execution &amp; C2 Flow — OSINT</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --bd:#30363d; --tx:#e6edf3; --mut:#8b949e;
+    --grn:#3fb950; --yel:#d29922; --org:#db6d28; --red:#f85149; --blu:#58a6ff; --pur:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:26px;font-size:14px}
+  .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#f85149,#db6d28);display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a0606}
+  h1{font-size:17px}
+  .sub{color:var(--mut);font-size:12px;margin-bottom:18px;margin-left:48px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  .legend{display:flex;gap:16px;margin:0 0 20px 48px;font-size:11px;color:var(--mut);flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .src{font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
+  .src-stat{background:rgba(88,166,255,.14);color:var(--blu);border:1px solid rgba(88,166,255,.4)}
+  .src-dyn{background:rgba(63,185,80,.14);color:var(--grn);border:1px solid rgba(63,185,80,.4)}
+
+  .flow{max-width:660px;margin:0 auto}
+  .step{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;position:relative}
+  .step .row{display:flex;align-items:flex-start;gap:12px}
+  .num{flex:none;width:26px;height:26px;border-radius:50%;background:#21262d;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--blu)}
+  .step h3{font-size:14px;margin-bottom:3px}
+  .step p{color:var(--mut);font-size:12px;line-height:1.5}
+  .chips{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:10px;font-weight:600;background:#1c232c;border:1px solid var(--bd);border-radius:6px;padding:2px 7px;color:var(--tx)}
+  .chip b{color:var(--pur)}
+  .badge{position:absolute;top:12px;right:14px}
+
+  .arrow{height:30px;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+  .arrow svg{width:18px;height:30px}
+
+  /* C2 highlight */
+  .c2{border-color:rgba(248,81,73,.5);box-shadow:0 0 0 1px rgba(248,81,73,.18),0 0 22px rgba(248,81,73,.08)}
+  .c2 .num{color:var(--red);border-color:rgba(248,81,73,.5)}
+  .endpoint{margin-top:12px;margin-left:38px;background:rgba(248,81,73,.08);border:1px dashed rgba(248,81,73,.5);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .endpoint .ip{font-size:13px;color:var(--red)}
+  .endpoint .dir{color:var(--mut);font-size:11px}
+  .pivot{margin-top:10px;margin-left:38px;background:rgba(88,166,255,.07);border-left:3px solid var(--blu);border-radius:6px;padding:9px 12px;font-size:12px}
+  .pivot b{color:var(--blu)}
+  .pivot .ar{color:var(--mut)}
+
+  .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;margin-left:38px}
+  .act{background:#1c232c;border:1px solid var(--bd);border-radius:8px;padding:9px;text-align:center;font-size:12px}
+  .act .e{font-size:18px;display:block;margin-bottom:3px}
+  .foot{max-width:660px;margin:22px auto 0;color:var(--mut);font-size:11px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <div class="logo">⚠</div>
+    <div><h1>Malware Execution &amp; C2 Flow</h1></div>
+  </div>
+  <div class="sub">Sample: <span class="mono">28247211d1eb08370aa363f08821a653</span> · Poebot / AgentWDCR / SDBot · PE32 · VT 61/72 · <b style="color:var(--red)">MALICIOUS</b></div>
+
+  <div class="legend">
+    <span><i class="src src-stat">inferred-static</i> dari PE/strings/TTP</span>
+    <span><i class="src src-dyn">dynamic/sandbox</i> dari VT behaviour / ThreatFox / sandbox</span>
+  </div>
+
+  <div class="flow">
+
+    <!-- 1 -->
+    <div class="step">
+      <span class="badge src src-stat">inferred-static</span>
+      <div class="row"><div class="num">1</div><div>
+        <h3>Initial Execution</h3>
+        <p>User menjalankan <span class="mono">sample.exe</span> (PE32, 73 KB, MSVC). Tidak ada packer standar.</p>
+        <div class="chips"><span class="chip"><b>T1204</b> User Execution</span></div>
+      </div></div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 18 30"><line x1="9" y1="0" x2="9" y2="22" stroke="#8b949e" stroke-width="2"/><polygon points="9,30 4,22 14,22" fill="#8b949e"/></svg></div>
+
+    <!-- 2 -->
+    <div class="step">
+      <span class="badge src src-stat">inferred-static</span>
+      <div class="row"><div class="num">2</div><div>
+        <h3>Loader / Cryptor — Decrypt Payload</h3>
+        <p>Dekripsi section <span class="mono">.data</span> (entropy 7.95) + rekonstruksi IAT saat runtime (<span class="mono">sub_402031</span>). Anti-analisis via custom crypto.</p>
+        <div class="chips"><span class="chip"><b>T1027</b> Obfuscated Files/Info</span><span class="chip"><b>T1140</b> Deobfuscate</span></div>
+      </div></div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 18 30"><line x1="9" y1="0" x2="9" y2="22" stroke="#8b949e" stroke-width="2"/><polygon points="9,30 4,22 14,22" fill="#8b949e"/></svg></div>
+
+    <!-- 3 -->
+    <div class="step">
+      <span class="badge src src-stat">inferred-static</span>
+      <div class="row"><div class="num">3</div><div>
+        <h3>In-Memory Injection</h3>
+        <p>Payload ter-dekripsi disuntikkan via process hollowing / reflective injection — berjalan di proses sah untuk evasi.</p>
+        <div class="chips"><span class="chip"><b>T1055</b> Process Injection</span></div>
+      </div></div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 18 30"><line x1="9" y1="0" x2="9" y2="22" stroke="#8b949e" stroke-width="2"/><polygon points="9,30 4,22 14,22" fill="#8b949e"/></svg></div>
+
+    <!-- 4 C2 -->
+    <div class="step c2">
+      <span class="badge src src-dyn">dynamic/sandbox</span>
+      <div class="row"><div class="num">4</div><div>
+        <h3>C2 Communication (Beacon)</h3>
+        <p>Proses yang disuntik membuka kanal C2 terenkripsi, mengirim beacon &amp; menerima perintah/payload tambahan.</p>
+        <div class="chips"><span class="chip"><b>T1071</b> App Layer Protocol</span><span class="chip"><b>T1573</b> Encrypted Channel</span></div>
+      </div></div>
+
+      <div class="endpoint">
+        <span class="ip mono">🌐 C2 endpoint: 185.adb.xx.xx : 443  /  cdn-update[.]xyz</span>
+        <span class="dir">beacon ⇄ commands</span>
+      </div>
+
+      <div class="pivot">
+        <span class="ar">↳ pivot otomatis:</span> <b>osint-recon</b> (owner / ASN / geo IP) &nbsp;+&nbsp; <b>osint-security</b> (reputasi IP &amp; domain C2)
+      </div>
+    </div>
+
+    <div class="arrow"><svg viewBox="0 0 18 30"><line x1="9" y1="0" x2="9" y2="22" stroke="#8b949e" stroke-width="2"/><polygon points="9,30 4,22 14,22" fill="#8b949e"/></svg></div>
+
+    <!-- 5 actions -->
+    <div class="step">
+      <span class="badge src src-dyn">dynamic/sandbox</span>
+      <div class="row"><div class="num">5</div><div>
+        <h3>Actions on Objective</h3>
+        <p>Setelah C2 aktif, sampel menjalankan misinya:</p>
+      </div></div>
+      <div class="actions">
+        <div class="act"><span class="e">⛏️</span>Coin mining<br><span style="color:var(--mut);font-size:10px">T1496</span></div>
+        <div class="act"><span class="e">🪱</span>Worm spread<br><span style="color:var(--mut);font-size:10px">lateral</span></div>
+        <div class="act"><span class="e">🚪</span>Backdoor / RAT<br><span style="color:var(--mut);font-size:10px">remote access</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="foot">
+    Node <i class="src src-stat">inferred-static</i> = disimpulkan dari analisis statis (PE/strings/imports/TTP).<br>
+    Node <i class="src src-dyn">dynamic/sandbox</i> = butuh data perilaku; C2 endpoint terisi dari VT <span class="mono">/behaviour_summary</span> · <span class="mono">/contacted_ips</span> · ThreatFox · sandbox (Triage/Any.Run).<br>
+    <em>Contoh / mock — IP &amp; domain C2 di atas ilustratif sampai sampel didetonasi atau VT behaviour tersedia.</em>
+  </p>
+
+</body>
+</html>
