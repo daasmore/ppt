@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSINT Ops Dashboard — Hermes</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --bd:#30363d;
+    --tx:#e6edf3; --mut:#8b949e; --grn:#3fb950; --yel:#d29922; --org:#db6d28;
+    --red:#f85149; --blu:#58a6ff; --pur:#bc8cff;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:22px;font-size:14px}
+  a{color:var(--blu);text-decoration:none}
+  .bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#58a6ff,#bc8cff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#04101f}
+  .brand h1{font-size:17px;letter-spacing:.3px}
+  .brand p{color:var(--mut);font-size:12px}
+  .clock{text-align:right;color:var(--mut);font-size:12px}
+  .clock b{color:var(--tx);font-size:14px}
+  .mock{display:inline-block;margin-left:10px;font-size:10px;color:var(--yel);border:1px solid var(--yel);border-radius:20px;padding:2px 8px;vertical-align:middle}
+
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(5,1fr)}
+  .row2{grid-template-columns:1.1fr 1.4fr 1.2fr}
+  .row3{grid-template-columns:1.7fr 1fr}
+  @media(max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.row2,.row3{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:var(--radius);padding:16px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:14px;font-weight:600}
+
+  .kpi .n{font-size:30px;font-weight:800;line-height:1}
+  .kpi .l{color:var(--mut);font-size:12px;margin-top:6px}
+  .kpi .d{font-size:11px;margin-top:8px}
+  .up{color:var(--grn)} .down{color:var(--red)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+  /* donut */
+  .donut-wrap{display:flex;align-items:center;gap:18px}
+  .donut{width:140px;height:140px;border-radius:50%;
+    background:conic-gradient(var(--red) 0 16.7%,var(--org) 16.7% 33%,var(--yel) 33% 45%,var(--grn) 45% 100%);
+    position:relative;flex:none}
+  .donut::after{content:"";position:absolute;inset:22px;border-radius:50%;background:var(--panel)}
+  .donut .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
+  .donut .center b{font-size:24px} .donut .center span{font-size:10px;color:var(--mut)}
+  .legend{font-size:13px}
+  .legend div{display:flex;justify-content:space-between;gap:18px;padding:4px 0}
+  .legend .v{color:var(--mut)}
+
+  /* severity bars */
+  .sev{display:flex;flex-direction:column;gap:11px}
+  .sev .b{display:grid;grid-template-columns:78px 1fr 34px;align-items:center;gap:10px;font-size:12px}
+  .track{height:9px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--bd)}
+  td{padding:9px 10px;border-bottom:1px solid #21262d}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1b222b}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;display:inline-block}
+  .t-mal{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.4)}
+  .t-sus{background:rgba(210,153,34,.15);color:var(--yel);border:1px solid rgba(210,153,34,.4)}
+  .t-cln{background:rgba(63,185,80,.15);color:var(--grn);border:1px solid rgba(63,185,80,.4)}
+  .typ{font-size:11px;color:var(--mut);border:1px solid var(--bd);border-radius:6px;padding:1px 7px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+
+  .ioc{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #21262d;font-size:13px}
+  .ioc:last-child{border:none}
+  .pill{font-size:11px;color:var(--mut);background:var(--panel2);border-radius:6px;padding:1px 8px}
+
+  .usage .u{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .warn{color:var(--org)}
+  .foot{color:var(--mut);font-size:11px;text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+
+  <div class="bar">
+    <div class="brand">
+      <div class="logo">H</div>
+      <div>
+        <h1>OSINT Ops Dashboard <span class="mock">CONTOH / MOCK DATA</span></h1>
+        <p>Hermes Agent · tim: orchestrator · recon · security · malware</p>
+      </div>
+    </div>
+    <div class="clock">
+      <div>Last sync</div>
+      <b id="clk">2026-06-11 19:42 WIB</b>
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="grid kpis" style="margin-bottom:16px">
+    <div class="card kpi"><div class="n">42</div><div class="l">Total Analyses</div><div class="d up">▲ 11 hari ini</div></div>
+    <div class="card kpi"><div class="n" style="color:var(--red)">7</div><div class="l">Malicious</div><div class="d">16.7% dari total</div></div>
+    <div class="card kpi"><div class="n" style="color:var(--yel)">9</div><div class="l">Suspicious</div><div class="d">21.4% dari total</div></div>
+    <div class="card kpi"><div class="n" style="color:var(--grn)">26</div><div class="l">Clean</div><div class="d">61.9% dari total</div></div>
+    <div class="card kpi"><div class="n">2.4<span style="font-size:14px">m</span></div><div class="l">Avg. Waktu Analisa</div><div class="d up">▼ 18s vs kemarin</div></div>
+  </div>
+
+  <!-- ROW 2 -->
+  <div class="grid row2" style="margin-bottom:16px">
+    <div class="card">
+      <h2>Verdict Distribution</h2>
+      <div class="donut-wrap">
+        <div class="donut"><div class="center"><b>42</b><span>cases</span></div></div>
+        <div class="legend" style="flex:1">
+          <div><span><span class="dot" style="background:var(--red)"></span>Malicious</span><span class="v">7</span></div>
+          <div><span><span class="dot" style="background:var(--org)"></span>Susp. (High)</span><span class="v">5</span></div>
+          <div><span><span class="dot" style="background:var(--yel)"></span>Susp. (Med)</span><span class="v">4</span></div>
+          <div><span><span class="dot" style="background:var(--grn)"></span>Clean / Low</span><span class="v">26</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Findings by Severity</h2>
+      <div class="sev">
+        <div class="b"><span><span class="dot" style="background:var(--red)"></span>Critical</span><div class="track"><div class="fill" style="width:12%;background:var(--red)"></div></div><span>3</span></div>
+        <div class="b"><span><span class="dot" style="background:var(--org)"></span>High</span><div class="track"><div class="fill" style="width:21%;background:var(--org)"></div></div><span>5</span></div>
+        <div class="b"><span><span class="dot" style="background:var(--yel)"></span>Medium</span><div class="track"><div class="fill" style="width:33%;background:var(--yel)"></div></div><span>8</span></div>
+        <div class="b"><span><span class="dot" style="background:var(--blu)"></span>Low</span><div class="track"><div class="fill" style="width:50%;background:var(--blu)"></div></div><span>12</span></div>
+        <div class="b"><span><span class="dot" style="background:var(--mut)"></span>Info</span><div class="track"><div class="fill" style="width:83%;background:var(--mut)"></div></div><span>20</span></div>
+      </div>
+    </div>
+
+    <div class="card usage">
+      <h2>Konsumsi Model (9router)</h2>
+      <div class="u"><span><span class="dot" style="background:var(--pur)"></span>pro (orchestrator+malware)</span><span class="mono">1.84M tok</span></div>
+      <div class="track" style="margin-bottom:14px"><div class="fill" style="width:88%;background:var(--pur)"></div></div>
+      <div class="u"><span><span class="dot" style="background:var(--blu)"></span>free (recon+security)</span><span class="mono">0.42M tok</span></div>
+      <div class="track" style="margin-bottom:14px"><div class="fill" style="width:30%;background:var(--blu)"></div></div>
+      <div class="u warn"><span>⚠ Rate limit pro</span><span>88% kuota harian</span></div>
+      <div style="color:var(--mut);font-size:11px;margin-top:8px">Tip: arahkan auxiliary ke model free untuk turunkan beban pro.</div>
+    </div>
+  </div>
+
+  <!-- ROW 3 -->
+  <div class="grid row3">
+    <div class="card">
+      <h2>Recent Cases</h2>
+      <table>
+        <thead><tr><th>Target</th><th>Tipe</th><th>Verdict</th><th>Risk</th><th>Waktu (WIB)</th><th>Report</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">28247211…​.zip <span style="color:var(--mut)">(Poebot)</span></td>
+            <td><span class="typ">File</span></td>
+            <td><span class="tag t-mal">MALICIOUS</span></td>
+            <td style="color:var(--red)">CRITICAL</td>
+            <td>11 Jun 19:19</td>
+            <td><a href="#">PDF ↗</a></td>
+          </tr>
+          <tr>
+            <td class="mono">phish-login-bca[.]com</td>
+            <td><span class="typ">URL</span></td>
+            <td><span class="tag t-mal">MALICIOUS</span></td>
+            <td style="color:var(--org)">HIGH</td>
+            <td>11 Jun 18:55</td>
+            <td><a href="#">PDF ↗</a></td>
+          </tr>
+          <tr>
+            <td class="mono">141.98.83.48</td>
+            <td><span class="typ">IP</span></td>
+            <td><span class="tag t-sus">SUSPICIOUS</span></td>
+            <td style="color:var(--yel)">MEDIUM</td>
+            <td>11 Jun 18:30</td>
+            <td><a href="#">PDF ↗</a></td>
+          </tr>
+          <tr>
+            <td class="mono">ias.id</td>
+            <td><span class="typ">Domain</span></td>
+            <td><span class="tag t-cln">CLEAN</span></td>
+            <td style="color:var(--blu)">LOW</td>
+            <td>11 Jun 17:33</td>
+            <td><a href="#">PDF ↗</a></td>
+          </tr>
+          <tr>
+            <td class="mono">8.8.8.8</td>
+            <td><span class="typ">IP</span></td>
+            <td><span class="tag t-cln">CLEAN</span></td>
+            <td style="color:var(--mut)">INFO</td>
+            <td>11 Jun 16:10</td>
+            <td><a href="#">PDF ↗</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h2>Top Malware Families</h2>
+        <div class="ioc"><span>Poebot / SDBot</span><span class="pill">x4</span></div>
+        <div class="ioc"><span>AgentTesla</span><span class="pill">x3</span></div>
+        <div class="ioc"><span>RedLine Stealer</span><span class="pill">x2</span></div>
+        <div class="ioc"><span>Mirai variant</span><span class="pill">x1</span></div>
+      </div>
+      <div class="card">
+        <h2>Watchlist Status</h2>
+        <div class="ioc"><span><span class="dot" style="background:var(--grn)"></span>ias.id</span><span class="pill">OK · cek 06:00</span></div>
+        <div class="ioc"><span><span class="dot" style="background:var(--grn)"></span>company.co.id</span><span class="pill">OK</span></div>
+        <div class="ioc"><span><span class="dot" style="background:var(--org)"></span>vpn.corp.id</span><span class="pill">CVE baru!</span></div>
+        <div class="ioc"><span><span class="dot" style="background:var(--red)"></span>mail.corp.id</span><span class="pill">cert exp 3 hari</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">Hermes OSINT · mockup statis (data contoh) · sumber data nyata akan dibaca dari ~/.hermes/kanban.db + folder report</p>
+
+<script>
+  // jam WIB live (UTC+7)
+  function tick(){
+    const now=new Date();
+    const wib=new Date(now.getTime()+(now.getTimezoneOffset()*60000)+(7*3600000));
+    const p=n=>String(n).padStart(2,'0');
+    document.getElementById('clk').textContent=
+      `${wib.getFullYear()}-${p(wib.getMonth()+1)}-${p(wib.getDate())} ${p(wib.getHours())}:${p(wib.getMinutes())} WIB`;
+  }
+  tick(); setInterval(tick,30000);
+</script>
+</body>
+</html>
